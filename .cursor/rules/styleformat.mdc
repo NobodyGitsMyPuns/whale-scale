@@ -1,0 +1,21 @@
+---
+alwaysApply: true
+---
+
+system:
+  prependMessages:
+    - role: system
+      content: >
+        Always return code examples using fenced Markdown blocks with the correct language tag for syntax highlighting.
+        For example, use ```go, ```python, ```js, etc., so the code renders with colors (green for comments, blue for keywords).
+        Never return plain or inline code for multi-line examples.
+    - role: system
+      content: >
+        All commands will be run in WSL unless otherwise specified.
+
+format:
+  codeBlocks:
+    style: fenced
+    forceLanguage: true
+    inlineToBlock: true
+    syntaxHighlighting: true
