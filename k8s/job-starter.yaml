@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: hello-workflow-starter
+  namespace: temporal
+spec:
+  template:
+    spec:
+      containers:
+      - name: starter
+        image: jeric/whale-scale:latest
+        command: ["python3", "-m", "app.starter", "--name", "Kubernetes"]
+        envFrom:
+        - configMapRef:
+            name: env-vars
+      restartPolicy: Never
+  backoffLimit: 1 

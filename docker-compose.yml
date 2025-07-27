@@ -1,11 +1,17 @@
-version: "3.9"
 services:
-  temporal:
-    image: temporalio/auto-setup:1.7.0
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
     environment:
-       - DATABASE=sqlite
-       - DBNAME=temporal
-       - ENABLE_ES=false
+      - TEMPORAL_TARGET=host.docker.internal:7233
+      - TASK_QUEUE=hello-python-tq
     ports:
-       - "8233:8233"
-       - "7233:7233"
+      - "7233:7233"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
