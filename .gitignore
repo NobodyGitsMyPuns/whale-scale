@@ -218,3 +218,4 @@ nvidia/
 
 # Cursor IDE
 .cursor/ 
+*.pyc   
