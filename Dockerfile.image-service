@@ -29,7 +29,7 @@ COPY image-service-requirements.txt .
 RUN pip3 install --no-cache-dir -r image-service-requirements.txt
 
 # Copy the image generation service
-COPY image_generation_service_original.py ./image_generation_service.py
+COPY image_generation_service.py ./image_generation_service.py
 
 # Create directories for models and output
 RUN mkdir -p /models /output

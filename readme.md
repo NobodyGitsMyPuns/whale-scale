@@ -265,7 +265,8 @@ make start-text2image-high-util
 # Generate with custom parameters
 python3 -m app.starter --type text2image \
   --prompt "Cyberpunk city at night, neon lights, rain" \
-  --negative-prompt "blurry, low quality" \
+  --blurry, distorted, low quality, low resolution, poorly drawn, bad anatomy, disfigured, deformed, extra limbs, mutated, watermark, text, signature, nsfw, grainy, noisy, overexposed, underexposed
+ \
   --model "stabilityai/stable-diffusion-xl-base-1.0" \
   --width 1024 --height 1024 \
   --steps 50 --cfg-scale 15.0 \

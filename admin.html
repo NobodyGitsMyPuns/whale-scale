@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whale Scale - Image Generation Admin</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+
+        .form-section h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .range-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .range-group input[type="range"] {
+            flex: 1;
+        }
+
+        .range-group .value {
+            min-width: 60px;
+            text-align: center;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 10px 20px rgba(231, 76, 60, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 10px 20px rgba(39, 174, 96, 0.3);
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .status {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .status h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .status-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+
+        .status-item h5 {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .status-item .value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .image-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .image-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .image-card img {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+        }
+
+        .image-info {
+            padding: 15px;
+        }
+
+        .image-info h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .image-info p {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .image-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 12px;
+            border-radius: 6px;
+        }
+
+        .btn-delete {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-delete:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 10px rgba(231, 76, 60, 0.3);
+        }
+
+        .btn-download {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-download:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 10px rgba(39, 174, 96, 0.3);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.8); }
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .json-log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .json-log h5 {
+            margin: 0 0 10px 0;
+            color: #495057;
+            font-weight: bold;
+        }
+
+        .json-log.request {
+            border-left: 4px solid #007bff;
+        }
+
+        .json-log.response {
+            border-left: 4px solid #28a745;
+        }
+
+        .json-log.error {
+            border-left: 4px solid #dc3545;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🐋 Whale Scale</h1>
+            <p>Image Generation Admin Panel</p>
+        </div>
+
+        <div class="content">
+            <!-- Status Section -->
+            <div class="status">
+                <h4>Service Status</h4>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <h5>Service Status</h5>
+                        <div class="value" id="serviceStatus">Checking...</div>
+                    </div>
+                    <div class="status-item">
+                        <h5>GPU Available</h5>
+                        <div class="value" id="gpuStatus">Checking...</div>
+                    </div>
+                    <div class="status-item">
+                        <h5>Models Loaded</h5>
+                        <div class="value" id="modelsLoaded">Checking...</div>
+                    </div>
+                    <div class="status-item">
+                        <h5>Total Models</h5>
+                        <div class="value" id="totalModels">Checking...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Generation Form -->
+            <div class="grid">
+                <div class="form-section">
+                    <h3>📝 Generation Parameters</h3>
+                    
+                    <div class="form-group">
+                        <label for="prompt">Prompt</label>
+                        <textarea id="prompt" placeholder="Enter your image generation prompt...">A majestic whale swimming in the deep ocean, highly detailed, 8k resolution</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="negativePrompt">Negative Prompt</label>
+                        <textarea id="negativePrompt" placeholder="Enter negative prompt (what to avoid)...">blurry, low resolution, jpeg artifacts, out of focus, overexposed, underexposed, bad lighting, unnatural skin, mutated hands, extra fingers, missing fingers, fused fingers, long neck, deformed face, bad anatomy, disfigured, unrealistic proportions, extra limbs, cross-eyed, lazy eye, distorted eyes, poorly drawn face, asymmetrical face, extra arms, extra legs, broken limbs, ugly, old, cartoon, anime, painting, 3d render, nsfw, watermark, text, signature
+                        </textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="model">Model</label>
+                        <select id="model">
+                            <option value="">Loading models...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="width">Width</label>
+                        <div class="range-group">
+                            <input type="range" id="width" min="256" max="2048" step="64" value="1024">
+                            <span class="value" id="widthValue">512</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="height">Height</label>
+                        <div class="range-group">
+                            <input type="range" id="height" min="256" max="2048" step="64" value="1024">
+                            <span class="value" id="heightValue">512</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="steps">Steps</label>
+                        <div class="range-group">
+                            <input type="range" id="steps" min="10" max="100" step="1" value="35">
+                            <span class="value" id="stepsValue">50</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cfgScale">CFG Scale</label>
+                        <div class="range-group">
+                            <input type="range" id="cfgScale" min="1" max="20" step="0.5" value="5.0">
+                            <span class="value" id="cfgScaleValue">15.0</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="seed">Seed (-1 for random)</label>
+                        <input type="number" id="seed" value="-1" min="-1" max="999999999">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>⚙️ Advanced Settings</h3>
+                    
+                    <div class="form-group">
+                        <label for="sampler">Sampler</label>
+                        <select id="sampler">
+                            <option value="euler">Euler</option>
+                            <option value="euler_a">Euler Ancestral</option>
+                            <option value="dpm++_2m">DPM++ 2M</option>
+                            <option value="dpm++_2s">DPM++ 2S</option>
+                            <option value="ddim">DDIM</option>
+                            <option value="plms">PLMS</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scheduler">Scheduler</label>
+                        <select id="scheduler">
+                            <option value="normal">Normal</option>
+                            <option value="karras">Karras</option>
+                            <option value="exponential">Exponential</option>
+                            <option value="sgm_uniform">SGM Uniform</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="batchSize">Batch Size</label>
+                        <input type="number" id="batchSize" value="1" min="1" max="4">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="numImages">Number of Images</label>
+                        <input type="number" id="numImages" value="1" min="1" max="10">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="saveFormat">Save Format</label>
+                        <select id="saveFormat">
+                            <option value="png">PNG</option>
+                            <option value="jpg">JPG</option>
+                            <option value="webp">WebP</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="quality">Quality (JPG/WebP)</label>
+                        <div class="range-group">
+                            <input type="range" id="quality" min="1" max="100" step="1" value="95">
+                            <span class="value" id="qualityValue">95</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button class="btn btn-success" onclick="generateImage()">🚀 Generate Image</button>
+                <button class="btn" onclick="generateMultiple()">🔄 Generate Multiple</button>
+                <button class="btn" onclick="refreshModels()">🔄 Refresh Models</button>
+                <button class="btn" onclick="checkStatus()">📊 Check Status</button>
+                <button class="btn btn-danger" onclick="clearGallery()">🗑️ Clear Gallery</button>
+            </div>
+
+            <!-- Loading -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Generating image... This may take a few minutes.</p>
+            </div>
+
+            <!-- Alerts -->
+            <div id="alerts"></div>
+
+            <!-- JSON Logs -->
+            <div class="form-section">
+                <h3>📋 API Logs</h3>
+                <div id="jsonLogs">
+                    <!-- JSON requests/responses will appear here -->
+                </div>
+            </div>
+
+            <!-- Gallery -->
+            <div class="gallery" id="gallery">
+                <!-- Generated images will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8001';
+        let currentTaskId = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkStatus();
+            loadModels();
+            setupRangeInputs();
+        });
+
+        // Setup range inputs
+        function setupRangeInputs() {
+            const ranges = ['width', 'height', 'steps', 'cfgScale', 'quality'];
+            ranges.forEach(id => {
+                const input = document.getElementById(id);
+                const value = document.getElementById(id + 'Value');
+                input.addEventListener('input', () => {
+                    value.textContent = input.value;
+                });
+            });
+        }
+
+        // Check service status
+        async function checkStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/`);
+                const data = await response.json();
+                
+                document.getElementById('serviceStatus').textContent = data.status;
+                document.getElementById('gpuStatus').textContent = data.gpu_available ? 'Yes' : 'No';
+                document.getElementById('modelsLoaded').textContent = data.models_loaded.length;
+                document.getElementById('totalModels').textContent = data.total_models_found;
+                
+                logJson('Status Response', data, 'response', response.status);
+                showAlert('Service status updated', 'success');
+            } catch (error) {
+                document.getElementById('serviceStatus').textContent = 'Offline';
+                document.getElementById('gpuStatus').textContent = 'Unknown';
+                document.getElementById('modelsLoaded').textContent = '0';
+                document.getElementById('totalModels').textContent = '0';
+                logJson('Status Error', { error: error.message }, 'error', 'Network Error');
+                showAlert('Service is offline', 'error');
+            }
+        }
+
+        // Load available models
+        async function loadModels() {
+            try {
+                const response = await fetch(`${API_BASE}/models/text2image`);
+                const data = await response.json();
+                
+                logJson('Models Response', data, 'response', response.status);
+                
+                const select = document.getElementById('model');
+                select.innerHTML = '<option value="">Select a model...</option>';
+                
+                // Group models by type
+                const checkpoints = data.models.filter(m => m.type === 'checkpoint');
+                const loras = data.models.filter(m => m.type === 'lora');
+                
+                // Add checkpoint models first
+                if (checkpoints.length > 0) {
+                    const checkpointGroup = document.createElement('optgroup');
+                    checkpointGroup.label = `📦 Checkpoint Models (${checkpoints.length})`;
+                    
+                    checkpoints.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.name;
+                        option.textContent = model.name;
+                        checkpointGroup.appendChild(option);
+                    });
+                    
+                    select.appendChild(checkpointGroup);
+                }
+                
+                // Add LoRA models
+                if (loras.length > 0) {
+                    const loraGroup = document.createElement('optgroup');
+                    loraGroup.label = `🎨 Style LoRAs (${loras.length})`;
+                    
+                    loras.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.name;
+                        option.textContent = model.name;
+                        loraGroup.appendChild(option);
+                    });
+                    
+                    select.appendChild(loraGroup);
+                }
+                
+                // Set default model if available - prefer SD1.5 models
+                if (checkpoints.length > 0) {
+                    // Look for SD1.5 model first
+                    const sd15Model = checkpoints.find(model => 
+                        model.name.includes('SD1.5') && model.name.includes('v1-5-pruned-emaonly.ckpt')
+                    );
+                    if (sd15Model) {
+                        select.value = sd15Model.name;
+                    } else {
+                        // Fallback to first checkpoint model
+                        select.value = checkpoints[0].name;
+                    }
+                }
+            } catch (error) {
+                logJson('Models Error', { error: error.message }, 'error', 'Network Error');
+                showAlert('Failed to load models', 'error');
+            }
+        }
+
+        // Generate single image
+        async function generateImage() {
+            const params = getGenerationParams();
+            
+            try {
+                showLoading(true);
+                showAlert('Starting image generation...', 'info');
+                
+                logJson('Generate Request', params, 'request');
+                
+                const response = await fetch(`${API_BASE}/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(params)
+                });
+                
+                const data = await response.json();
+                logJson('Generate Response', data, 'response');
+                
+                currentTaskId = data.task_id;
+                
+                // Poll for completion
+                pollTaskStatus(data.task_id);
+                
+            } catch (error) {
+                showLoading(false);
+                logJson('Generate Error', { error: error.message }, 'error');
+                showAlert('Failed to start generation: ' + error.message, 'error');
+            }
+        }
+
+        // Generate multiple images
+        async function generateMultiple() {
+            const numImages = parseInt(document.getElementById('numImages').value);
+            const baseParams = getGenerationParams();
+            
+            showAlert(`Starting ${numImages} image generations...`, 'info');
+            
+            for (let i = 0; i < numImages; i++) {
+                const params = { ...baseParams };
+                if (params.seed === -1) {
+                    params.seed = Math.floor(Math.random() * 999999999);
+                } else {
+                    params.seed += i;
+                }
+                
+                try {
+                    const response = await fetch(`${API_BASE}/generate`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(params)
+                    });
+                    
+                    const data = await response.json();
+                    pollTaskStatus(data.task_id);
+                    
+                    // Small delay between requests
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (error) {
+                    showAlert(`Failed to start generation ${i + 1}: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // Poll task status
+        async function pollTaskStatus(taskId) {
+            const pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/status/${taskId}`);
+                    const data = await response.json();
+                    
+                    logJson(`Status ${taskId}`, data, 'response');
+                    
+                    if (data.status === 'completed') {
+                        clearInterval(pollInterval);
+                        showLoading(false);
+                        await getTaskResult(taskId);
+                    } else if (data.status === 'failed') {
+                        clearInterval(pollInterval);
+                        showLoading(false);
+                        logJson(`Task Failed ${taskId}`, data, 'error');
+                        showAlert('Generation failed: ' + data.error, 'error');
+                    }
+                    // Continue polling if still processing
+                } catch (error) {
+                    clearInterval(pollInterval);
+                    showLoading(false);
+                    logJson(`Status Error ${taskId}`, { error: error.message }, 'error');
+                    showAlert('Failed to check task status: ' + error.message, 'error');
+                }
+            }, 2000);
+        }
+
+        // Get task result
+        async function getTaskResult(taskId) {
+            try {
+                const response = await fetch(`${API_BASE}/result/${taskId}`);
+                const data = await response.json();
+                
+                addImageToGallery(data);
+                showAlert('Image generated successfully!', 'success');
+                
+            } catch (error) {
+                showAlert('Failed to get result: ' + error.message, 'error');
+            }
+        }
+
+        // Add image to gallery
+        function addImageToGallery(data) {
+            const gallery = document.getElementById('gallery');
+            const card = document.createElement('div');
+            card.className = 'image-card';
+            
+            const timestamp = new Date().toLocaleString();
+            const imageId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            card.innerHTML = `
+                <img src="data:image/png;base64,${data.image_data}" alt="Generated image">
+                <div class="image-info">
+                    <h4>Generated Image</h4>
+                    <p><strong>Time:</strong> ${data.generation_time}</p>
+                    <p><strong>Model:</strong> ${data.model_version}</p>
+                    <p><strong>Seed:</strong> ${data.seed}</p>
+                    <p><strong>Generated:</strong> ${timestamp}</p>
+                    <div class="image-actions">
+                        <button class="btn btn-download btn-small" onclick="downloadImage('${imageId}', '${data.image_data}')">
+                            📥 Download
+                        </button>
+                        <button class="btn btn-delete btn-small" onclick="deleteImage('${imageId}', this)">
+                            🗑️ Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            card.id = imageId;
+            gallery.insertBefore(card, gallery.firstChild);
+        }
+
+        // Delete image from gallery
+        function deleteImage(imageId, button) {
+            if (confirm('Are you sure you want to delete this image?')) {
+                const card = document.getElementById(imageId);
+                if (card) {
+                    card.style.animation = 'fadeOut 0.3s ease';
+                    setTimeout(() => {
+                        card.remove();
+                        showAlert('Image deleted successfully!', 'success');
+                    }, 300);
+                }
+            }
+        }
+
+        // Download image
+        function downloadImage(imageId, imageData) {
+            try {
+                const link = document.createElement('a');
+                link.download = `generated_image_${imageId}.png`;
+                link.href = `data:image/png;base64,${imageData}`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showAlert('Image download started!', 'success');
+            } catch (error) {
+                showAlert('Failed to download image: ' + error.message, 'error');
+            }
+        }
+
+        // Clear all images from gallery
+        function clearGallery() {
+            if (confirm('Are you sure you want to delete all images from the gallery?')) {
+                const gallery = document.getElementById('gallery');
+                const cards = gallery.querySelectorAll('.image-card');
+                
+                cards.forEach((card, index) => {
+                    setTimeout(() => {
+                        card.style.animation = 'fadeOut 0.3s ease';
+                        setTimeout(() => card.remove(), 300);
+                    }, index * 100);
+                });
+                
+                showAlert('All images deleted from gallery!', 'success');
+            }
+        }
+
+        // Get generation parameters
+        function getGenerationParams() {
+            return {
+                prompt: document.getElementById('prompt').value,
+                negative_prompt: document.getElementById('negativePrompt').value,
+                model: document.getElementById('model').value,
+                width: parseInt(document.getElementById('width').value),
+                height: parseInt(document.getElementById('height').value),
+                steps: parseInt(document.getElementById('steps').value),
+                cfg_scale: parseFloat(document.getElementById('cfgScale').value),
+                seed: parseInt(document.getElementById('seed').value),
+                sampler: document.getElementById('sampler').value,
+                scheduler: document.getElementById('scheduler').value
+            };
+        }
+
+        // Refresh models
+        async function refreshModels() {
+            showAlert('Refreshing models...', 'info');
+            await loadModels();
+            showAlert('Models refreshed', 'success');
+        }
+
+        // Clear gallery
+        function clearGallery() {
+            document.getElementById('gallery').innerHTML = '';
+            showAlert('Gallery cleared', 'success');
+        }
+
+        // Show/hide loading
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        // Show alert
+        function showAlert(message, type) {
+            const alerts = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            alerts.appendChild(alert);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Log JSON request/response
+        function logJson(title, data, type = 'response', statusCode = null) {
+            const logs = document.getElementById('jsonLogs');
+            const log = document.createElement('div');
+            log.className = `json-log ${type}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const statusText = statusCode ? ` (${statusCode})` : '';
+            log.innerHTML = `
+                <h5>${title}${statusText} (${timestamp})</h5>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+            
+            logs.insertBefore(log, logs.firstChild);
+            
+            // Keep only last 10 logs
+            const allLogs = logs.querySelectorAll('.json-log');
+            if (allLogs.length > 10) {
+                allLogs[allLogs.length - 1].remove();
+            }
+        }
+    </script>
+</body>
+</html> 

@@ -99,7 +99,7 @@ gen-image:
 gen-image-hq:
 	@echo "🎨 Generating high-quality image..."
 	@read -p "Enter your prompt: " prompt; \
-	. /tmp/whale-scale-venv/bin/activate && python3 -m app.starter --type text2image --prompt "$$prompt, highly detailed, 8k resolution" --width 1024 --height 1024 --steps 50 --cfg-scale 15.0
+	. /tmp/whale-scale-venv/bin/activate && python3 -m app.starter --type text2image --prompt "$$prompt, highly detailed, 8k resolution" --width 1024 --height 1024 genps 50 --cfg-scale 15.0
 
 # Quick whale image (for testing)
 gen-whale:
@@ -143,6 +143,7 @@ dev:
 	. /tmp/whale-scale-venv/bin/activate && python3 -m app.worker
 
 # Start services
+
 start-temporal:
 	@echo "Starting Temporal server..."
 	export PATH="$$PATH:/home/jeric/.temporalio/bin" && temporal server start-dev
@@ -225,17 +226,17 @@ gpu-test:
 
 list-models:
 	@echo "Listing available models..."
-	curl -X GET http://localhost:8000/models/checkpoints
+	curl -X GET http://localhost:8001/models/checkpoints
 
 test-sdxl:
 	@echo "Testing SDXL generation directly..."
-	curl -X POST http://localhost:8000/generate -H "Content-Type: application/json" -d '{"prompt": "A majestic whale swimming in the deep ocean, highly detailed, 8k resolution", "model": "stabilityai/stable-diffusion-xl-base-1.0", "width": 1024, "height": 1024, "steps": 30, "cfg_scale": 15.0, "seed": 42}'
+	curl -X POST http://localhost:8001/generate -H "Content-Type: application/json" -d '{"prompt": "A majestic whale swimming in the deep ocean, highly detailed, 8k resolution", "model": "stabilityai/stable-diffusion-xl-base-1.0", "width": 1024, "height": 1024, "steps": 30, "cfg_scale": 15.0, "seed": 42}'
 
 test-multi-gen:
 	@echo "Testing multiple simultaneous generations..."
-	curl -X POST http://localhost:8000/generate -H "Content-Type: application/json" -d '{"prompt": "A majestic whale swimming in the deep ocean, highly detailed, 8k resolution", "model": "runwayml/stable-diffusion-v1-5", "width": 1024, "height": 1024, "steps": 50, "cfg_scale": 15.0, "seed": 42}' &
-	curl -X POST http://localhost:8000/generate -H "Content-Type: application/json" -d '{"prompt": "A beautiful landscape with mountains and lakes, highly detailed, 8k resolution", "model": "runwayml/stable-diffusion-v1-5", "width": 1024, "height": 1024, "steps": 50, "cfg_scale": 15.0, "seed": 43}' &
-	curl -X POST http://localhost:8000/generate -H "Content-Type: application/json" -d '{"prompt": "A futuristic city with flying cars and neon lights, highly detailed, 8k resolution", "model": "runwayml/stable-diffusion-v1-5", "width": 1024, "height": 1024, "steps": 50, "cfg_scale": 15.0, "seed": 44}' &
+	curl -X POST http://localhost:8001/generate -H "Content-Type: application/json" -d '{"prompt": "A majestic whale swimming in the deep ocean, highly detailed, 8k resolution", "model": "runwayml/stable-diffusion-v1-5", "width": 1024, "height": 1024, "steps": 50, "cfg_scale": 15.0, "seed": 42}' &
+	curl -X POST http://localhost:8001/generate -H "Content-Type: application/json" -d '{"prompt": "A beautiful landscape with mountains and lakes, highly detailed, 8k resolution", "model": "runwayml/stable-diffusion-v1-5", "width": 1024, "height": 1024, "steps": 50, "cfg_scale": 15.0, "seed": 43}' &
+	curl -X POST http://localhost:8001/generate -H "Content-Type: application/json" -d '{"prompt": "A futuristic city with flying cars and neon lights, highly detailed, 8k resolution", "model": "runwayml/stable-diffusion-v1-5", "width": 1024, "height": 1024, "steps": 50, "cfg_scale": 15.0, "seed": 44}' &
 
 # Temporal monitoring commands
 temporal-ui:
@@ -273,7 +274,7 @@ status:
 	curl -s http://localhost:7233/health || echo "Temporal server not responding"
 	@echo ""
 	@echo "=== Image Generation Service ==="
-	curl -s http://localhost:8000/ || echo "Image service not responding"
+	curl -s http://localhost:8001/ || echo "Image service not responding"
 	@echo ""
 	@echo "=== Running Processes ==="
 	ps aux | grep -E "(image_generation_service|app.worker|temporal)" | grep -v grep || echo "No services running"
@@ -284,7 +285,7 @@ status:
 check-services:
 	@echo "Checking if all services are running..."
 	@echo "Temporal server: $$(curl -s http://localhost:7233/health > /dev/null && echo "✅ Running" || echo "❌ Not running")"
-	@echo "Image service: $$(curl -s http://localhost:8000/ > /dev/null && echo "✅ Running" || echo "❌ Not running")"
+	@echo "Image service: $$(curl -s http://localhost:8001/ > /dev/null && echo "✅ Running" || echo "❌ Not running")"
 	@echo "Worker: $$(ps aux | grep "app.worker" | grep -v grep > /dev/null && echo "✅ Running" || echo "❌ Not running")"
 
 # Cleanup commands
@@ -304,6 +305,12 @@ clean-all:
 # Test commands
 test:
 	. /tmp/whale-scale-venv/bin/activate && python3 -m pytest app/tests/ -v
+
+# Admin interface
+admin:
+	@echo "Starting admin interface..."
+	@echo "Open http://localhost:8080 in your browser"
+	python3 -m http.server 8080
 
 # Setup commands for NVIDIA Docker and Kubernetes (FIXED)
 setup-nvidia-docker:

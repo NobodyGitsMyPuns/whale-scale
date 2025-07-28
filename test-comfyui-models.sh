@@ -34,7 +34,8 @@ echo ""
 echo "1️⃣ Testing SD1.5 model..."
 python3 -m app.starter --type text2image \
   --prompt "A beautiful whale swimming in crystal clear water, high quality, detailed" \
-  --negative-prompt "blurry, low quality, distorted" \
+  --negative-prompt "blurry, distorted, low quality, low resolution, poorly drawn, bad anatomy, disfigured, deformed, extra limbs, mutated, watermark, text, signature, nsfw, grainy, noisy, overexposed, underexposed
+" \
   --model "SD1.5/stable-diffusion-v1-5.safetensors" \
   --width 512 --height 512 \
   --steps 20 --cfg-scale 7.5 \
@@ -45,7 +46,8 @@ echo ""
 echo "2️⃣ Testing FLUX1 model..."
 python3 -m app.starter --type text2image \
   --prompt "A majestic whale swimming in the deep ocean, cinematic lighting, high quality" \
-  --negative-prompt "blurry, low quality, distorted" \
+  --negative-prompt blurry, distorted, low quality, low resolution, poorly drawn, bad anatomy, disfigured, deformed, extra limbs, mutated, watermark, text, signature, nsfw, grainy, noisy, overexposed, underexposed
+" \
   --model "FLUX1/flux1-schnell-fp8.safetensors" \
   --width 512 --height 512 \
   --steps 20 --cfg-scale 7.5 \
@@ -56,7 +58,8 @@ echo ""
 echo "3️⃣ Testing SDXL model..."
 python3 -m app.starter --type text2image \
   --prompt "A stunning whale breaching the ocean surface, golden hour lighting, ultra detailed" \
-  --negative-prompt "blurry, low quality, distorted, ugly" \
+  --negative-prompt blurry, distorted, low quality, low resolution, poorly drawn, bad anatomy, disfigured, deformed, extra limbs, mutated, watermark, text, signature, nsfw, grainy, noisy, overexposed, underexposed
+, ugly" \
   --model "SDXL/sdxl-base-1.0.safetensors" \
   --width 768 --height 768 \
   --steps 25 --cfg-scale 8.0 \
