@@ -1,0 +1,45 @@
+FROM nvidia/cuda:11.8.0-runtime-ubuntu22.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV MODELS_DIR=/models
+ENV OUTPUT_DIR=/output
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN pip3 install --upgrade pip setuptools wheel
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements for image generation service
+COPY image-service-requirements.txt .
+
+# Install Python dependencies
+RUN pip3 install --no-cache-dir -r image-service-requirements.txt
+
+# Copy the image generation service
+COPY image_generation_service_original.py ./image_generation_service.py
+
+# Create directories for models and output
+RUN mkdir -p /models /output
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/ || exit 1
+
+# Run the service
+CMD ["python3", "image_generation_service.py"] 

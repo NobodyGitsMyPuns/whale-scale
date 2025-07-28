@@ -6,8 +6,11 @@ services:
     environment:
       - TEMPORAL_TARGET=host.docker.internal:7233
       - TASK_QUEUE=hello-python-tq
-    ports:
-      - "7233:7233"
+      - IMAGE_GENERATION_SERVICE_URL=http://image-service:8000
+    depends_on:
+      - image-service
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     deploy:
       resources:
         reservations:
@@ -15,3 +18,31 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+
+  image-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.image-service
+    ports:
+      - "8000:8000"
+    environment:
+      - COMFYUI_MODELS_DIR=/comfyui-models
+      - OUTPUT_DIR=/output
+      - HOST=0.0.0.0
+      - PORT=8000
+    volumes:
+      - "/mnt/c/Users/jeric/Documents/ComfyUI/models:/comfyui-models:ro"  # Mount your ComfyUI models directory using WSL path
+      - ./generated_images:/output  # Mount output directory
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

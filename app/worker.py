@@ -4,50 +4,70 @@ import signal
 import sys
 from temporalio.client import Client
 from temporalio.worker import Worker
-from .workflows import HelloWorkflow
-from .activities import say_hello
+# Remove the SandboxRestriction import since it's not available in this version
+from .workflows import HelloWorkflow, HealthCheckWorkflow, Text2ImageWorkflow
+from .activities import say_hello, check_container_health, generate_image_from_text
 
-# Try to use uvloop if available for better performance
+# Try to import uvloop for better performance (optional)
 try:
     import uvloop
-    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    print("Using uvloop for improved performance")
+    if sys.platform != "win32":
+        uvloop.install()
+        print("uvloop installed for better performance")
 except ImportError:
     print("uvloop not available, using standard event loop")
 
 async def main():
-    # Get configuration from environment variables with defaults
-    temporal_target = os.environ.get("TEMPORAL_TARGET", "localhost:7233")
-    task_queue = os.environ.get("TASK_QUEUE", "hello-python-tq")
+    # Get configuration from environment variables
+    temporal_target = os.getenv("TEMPORAL_TARGET", "localhost:7233")
+    task_queue = os.getenv("TASK_QUEUE", "hello-python-tq")
     
-    # Print startup information
     print(f"Connecting to Temporal server at {temporal_target}")
     print(f"Using task queue: {task_queue}")
     
     # Connect to the Temporal server
     client = await Client.connect(temporal_target)
     
-    # Create a worker that hosts workflow and activity implementations
+    # Create a worker with unrestricted sandbox for file system operations
+    # In Temporal 1.6.0, we need to set the environment variable to disable sandbox restrictions
+    os.environ["TEMPORAL_SANDBOX_UNRESTRICTED"] = "1"
+    
     worker = Worker(
-        client, 
-        task_queue=task_queue, 
-        workflows=[HelloWorkflow], 
-        activities=[say_hello]
+        client,
+        task_queue=task_queue,
+        workflows=[
+            HelloWorkflow,
+            HealthCheckWorkflow,
+            Text2ImageWorkflow
+        ],
+        activities=[
+            say_hello,
+            check_container_health,
+            generate_image_from_text
+        ],
+        # Remove the workflow_sandbox_restriction parameter
     )
+    
+    print("Starting worker with unrestricted sandbox...")
     
     # Set up graceful shutdown
     shutdown_event = asyncio.Event()
     
-    def handle_signal(sig, frame):
-        print(f"Received signal {sig}, shutting down...")
+    def signal_handler(signum, frame):
+        print(f"\nReceived signal {signum}, shutting down gracefully...")
         shutdown_event.set()
     
-    signal.signal(signal.SIGINT, handle_signal)
-    signal.signal(signal.SIGTERM, handle_signal)
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
     
-    # Start the worker
-    print("Starting worker...")
-    await worker.run()
+    # Run the worker until shutdown signal
+    try:
+        await worker.run()
+    except KeyboardInterrupt:
+        print("Worker stopped by user")
+    except Exception as e:
+        print(f"Worker error: {e}")
+        raise
 
 if __name__ == "__main__":
     asyncio.run(main())
