@@ -93,7 +93,7 @@ async def generate_image_from_text(args: tuple) -> dict:
     prompt, model, negative_prompt, width, height, steps, cfg_scale, seed = args
     
     # Set defaults if not provided
-    model = model or "stable-diffusion"
+    model = model or "runwayml/stable-diffusion-v1-5"
     negative_prompt = negative_prompt or ""
     width = width or 512
     height = height or 512

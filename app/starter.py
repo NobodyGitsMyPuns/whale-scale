@@ -17,8 +17,8 @@ async def main():
                        help="Text prompt for image generation")
     parser.add_argument("--negative-prompt", type=str, default="blurry, low quality, distorted", 
                        help="Negative prompt for image generation")
-    parser.add_argument("--model", type=str, default="SD1.5/stable-diffusion-v1-5.safetensors", 
-                       help="Model for image generation (e.g., 'SD1.5/stable-diffusion-v1-5.safetensors', 'FLUX1/flux1-schnell-fp8.safetensors')")
+    parser.add_argument("--model", type=str, default="runwayml/stable-diffusion-v1-5", 
+                       help="Model for image generation (e.g., 'runwayml/stable-diffusion-v1-5', 'FLUX1/flux1-schnell-fp8.safetensors')")
     parser.add_argument("--width", type=int, default=512, 
                        help="Image width")
     parser.add_argument("--height", type=int, default=512, 
