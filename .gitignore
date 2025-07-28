@@ -193,8 +193,22 @@ Desktop.ini
 # Kubernetes
 *.kubeconfig
 
-# Large binary files (handled by Git LFS)
-# minikube-linux-amd64 is tracked by Git LFS
+# Large binary files and models
+minikube-linux-amd64
+*.bin
+*.model
+*.weights
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.tflite
+*.pb
+*.h5
+*.hdf5
+*.joblib
+*.pickle
+*.pkl
 
 # Generated images
 generated_images/
