@@ -218,4 +218,9 @@ nvidia/
 
 # Cursor IDE
 .cursor/ 
-*.pyc   
+
+# Python compiled files
+*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
