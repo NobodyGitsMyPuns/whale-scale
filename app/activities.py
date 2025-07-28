@@ -97,8 +97,9 @@ async def generate_image_from_text(args: tuple) -> dict:
     negative_prompt = negative_prompt or ""
     width = width or 512
     height = height or 512
-    steps = steps or 20
-    cfg_scale = cfg_scale or 7.5
+    steps = steps or 30
+    cfg_scale = cfg_scale or 5
+    
     
     logger.info(f"Starting image generation activity with prompt: {prompt[:50]}...")
     activity.heartbeat()
