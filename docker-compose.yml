@@ -1,10 +1,11 @@
+
 services:
   worker:
     build:
       context: .
       dockerfile: Dockerfile.worker
     environment:
-      - TEMPORAL_TARGET=host.docker.internal:7233
+      - TEMPORAL_TARGET=172.21.181.91:7233
       - TASK_QUEUE=hello-python-tq
       - IMAGE_GENERATION_SERVICE_URL=http://image-service:8000
     depends_on:

@@ -4,7 +4,6 @@ import signal
 import sys
 from temporalio.client import Client
 from temporalio.worker import Worker
-# Remove the SandboxRestriction import since it's not available in this version
 from .workflows import HelloWorkflow, HealthCheckWorkflow, Text2ImageWorkflow
 from .activities import say_hello, check_container_health, generate_image_from_text
 
@@ -29,7 +28,6 @@ async def main():
     client = await Client.connect(temporal_target)
     
     # Create a worker with unrestricted sandbox for file system operations
-    # In Temporal 1.6.0, we need to set the environment variable to disable sandbox restrictions
     os.environ["TEMPORAL_SANDBOX_UNRESTRICTED"] = "1"
     
     worker = Worker(
@@ -45,7 +43,6 @@ async def main():
             check_container_health,
             generate_image_from_text
         ],
-        # Remove the workflow_sandbox_restriction parameter
     )
     
     print("Starting worker with unrestricted sandbox...")

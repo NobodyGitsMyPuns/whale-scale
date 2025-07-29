@@ -7,30 +7,24 @@ Runs Stable Diffusion models locally on GPU using ComfyUI model structure
 import asyncio
 import base64
 import json
+import logging
 import os
 import time
 import uuid
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional, List
-import logging
 
+import aiofiles
 import torch
+import torch.serialization
+import uvicorn
 from diffusers import StableDiffusionPipeline, DPMSolverMultistepScheduler
 from diffusers.pipelines.stable_diffusion.convert_from_ckpt import download_from_original_stable_diffusion_ckpt
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import uvicorn
-import os
-import json
-import uuid
-import logging
-import asyncio
-from typing import Dict, Optional
-import aiofiles
-from datetime import datetime
-import torch.serialization
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

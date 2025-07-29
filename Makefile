@@ -1,358 +1,268 @@
-# Installation and setup
-install:
-	@echo "Installing dependencies..."
-	@echo "Installing Python virtual environment tools..."
-	sudo apt update && sudo apt install -y python3-venv python3-pip || echo "Skipping apt install (not Ubuntu/Debian)"
-	@echo "Creating virtual environment..."
-	rm -rf /tmp/whale-scale-venv || true
-	python3 -m venv /tmp/whale-scale-venv
-	chmod +w /tmp/whale-scale-venv/bin/activate.csh || true
-	@echo "Activating virtual environment and installing Python dependencies..."
-	. /tmp/whale-scale-venv/bin/activate && pip install -r requirements.txt
-	@echo "Installing image generation service dependencies..."
-	. /tmp/whale-scale-venv/bin/activate && pip install -r image-service-requirements.txt
-	@echo "Installing additional dependencies (aiofiles, aiohttp, torch)..."
-	. /tmp/whale-scale-venv/bin/activate && pip install aiofiles aiohttp
-	. /tmp/whale-scale-venv/bin/activate && pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-	@echo "Installing Temporal CLI..."
-	curl -sSf https://temporal.download/cli.sh | sh
-	@echo "Installation complete!"
-	@echo "To activate the virtual environment, run: source /tmp/whale-scale-venv/bin/activate"
-	@echo "To add Temporal CLI to PATH, run: export PATH=\"\$$PATH:/home/jeric/.temporalio/bin\""
-
-# Fix common issues
-fix-dependencies:
-	@echo "Installing missing dependencies..."
-	. /tmp/whale-scale-venv/bin/activate && pip install aiofiles aiohttp
-	. /tmp/whale-scale-venv/bin/activate && pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-	@echo "Dependencies installed!"
-
-fix-sandbox:
-	@echo "The workflow sandbox issue has been fixed in app/worker.py"
-	@echo "The worker now uses SandboxRestriction.UNRESTRICTED"
-	@echo "Restart the worker with: make dev"
-
 # =============================================================================
-# SIMPLIFIED DEPLOYMENT WORKFLOWS
+# WHALE SCALE - Smart Multi-Environment Makefile
 # =============================================================================
 
-# Quick Docker deployment (recommended for development)
-deploy-docker:
-	@echo "🚀 Deploying to Docker..."
-	@echo "Building images..."
-	docker compose build
-	@echo "Starting services..."
-	docker compose up -d
-	@echo "✅ Docker deployment complete!"
-	@echo "Services available at:"
-	@echo "  - Image Service: http://localhost:8000"
-	@echo "  - Temporal UI: http://localhost:8233 (if running locally)"
+# Load environment configuration
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
+
+# Default values if .env doesn't exist
+ENVIRONMENT ?= docker
+TEMPORAL_SERVER_PORT ?= 7233
+IMAGE_SERVICE_PORT ?= 8000
+TEMPORAL_API_PORT ?= 8002
+ADMIN_PORT ?= 8080
+TEMPORAL_UI_PORT ?= 8233
+DOCKER_COMPOSE_PROFILE ?= local-temporal
+VENV_PATH ?= /tmp/whale-scale-venv
+
+# Colors for output
+RED=\033[0;31m
+GREEN=\033[0;32m
+YELLOW=\033[1;33m
+BLUE=\033[0;34m
+NC=\033[0m # No Color
+
+.PHONY: help startall stopall status env-info clean setup test
+
+# =============================================================================
+# MAIN COMMANDS
+# =============================================================================
+
+help: ## Show this help message
+	@echo "$(BLUE)🐋 Whale Scale - AI Image Generation Platform$(NC)"
 	@echo ""
-	@echo "To generate images: make gen-image"
-	@echo "To check status: make status-docker"
-
-# Quick Kubernetes deployment
-deploy-k8s:
-	@echo "🚀 Deploying to Kubernetes..."
-	@echo "Building and loading image to minikube..."
-	docker build . -f Dockerfile.worker -t whale-scale:latest
-	minikube image load whale-scale:latest
-	@echo "Applying Kubernetes manifests..."
-	minikube kubectl -- apply -f k8s/namespace.yaml
-	minikube kubectl -- apply -f k8s/configmap-env.yaml
-	minikube kubectl -- apply -f k8s/services-account.yaml
-	minikube kubectl -- apply -f k8s/deployment-worker.yaml
-	@echo "✅ Kubernetes deployment complete!"
+	@echo "$(GREEN)Quick Start:$(NC)"
+	@echo "  make startall    - Start all services (auto-detects environment)"
+	@echo "  make stopall     - Stop all services"
+	@echo "  make status      - Check service status"
 	@echo ""
-	@echo "To submit a job: make submit-k8s"
-	@echo "To check logs: make logs-k8s"
-	@echo "To check status: make status-k8s"
+	@echo "$(YELLOW)Available commands:$(NC)"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-# Redeploy (rebuild and deploy)
-redeploy-docker:
-	@echo "🔄 Redeploying to Docker..."
-	docker compose down
-	docker compose build --no-cache
-	docker compose up -d
-	@echo "✅ Docker redeployment complete!"
-
-redeploy-k8s:
-	@echo "🔄 Redeploying to Kubernetes..."
-	docker build . -f Dockerfile.worker -t whale-scale:latest --no-cache
-	minikube image load whale-scale:latest
-	minikube kubectl -- delete deployment temporal-worker -n temporal || true
-	sleep 5
-	minikube kubectl -- apply -f k8s/deployment-worker.yaml
-	@echo "✅ Kubernetes redeployment complete!"
-
-# =============================================================================
-# SIMPLIFIED IMAGE GENERATION
-# =============================================================================
-
-# Quick image generation (simple prompt)
-gen-image:
-	@echo "🎨 Generating image..."
-	@read -p "Enter your prompt: " prompt; \
-	. /tmp/whale-scale-venv/bin/activate && python3 -m app.starter --type text2image --prompt "$$prompt"
-
-# High-quality image generation
-gen-image-hq:
-	@echo "🎨 Generating high-quality image..."
-	@read -p "Enter your prompt: " prompt; \
-	. /tmp/whale-scale-venv/bin/activate && python3 -m app.starter --type text2image --prompt "$$prompt, highly detailed, 8k resolution" --width 1024 --height 1024 genps 50 --cfg-scale 15.0
-
-# Quick whale image (for testing)
-gen-whale:
-	@echo "🐋 Generating whale image..."
-	. /tmp/whale-scale-venv/bin/activate && python3 -m app.starter --type text2image --prompt "A majestic whale swimming in the deep ocean, highly detailed, 8k resolution" --width 1024 --height 1024 --steps 30
-
-# =============================================================================
-# STATUS AND MONITORING
-# =============================================================================
-
-# Docker status
-status-docker:
-	@echo "📊 Docker Status:"
-	@echo "==================="
-	docker compose ps
+startall: env-info ## Start all services based on environment
+	@echo "$(GREEN)🚀 Starting Whale Scale ($(ENVIRONMENT) environment)...$(NC)"
+ifeq ($(ENVIRONMENT),docker)
+	@$(MAKE) start-docker
+else ifeq ($(ENVIRONMENT),local)
+	@$(MAKE) start-local
+else ifeq ($(ENVIRONMENT),k8s)
+	@$(MAKE) start-k8s
+else
+	@echo "$(RED)❌ Unknown environment: $(ENVIRONMENT)$(NC)"
+	@echo "Set ENVIRONMENT in .env to: docker, local, or k8s"
+	@exit 1
+endif
 	@echo ""
-	@echo "🔍 Service Health:"
-	@echo "Image Service: $$(curl -s http://localhost:8000/ > /dev/null && echo "✅ Running" || echo "❌ Not running")"
+	@echo "$(GREEN)✅ Services started!$(NC)"
+	@$(MAKE) show-urls
 
-# Kubernetes status
-status-k8s:
-	@echo "📊 Kubernetes Status:"
-	@echo "======================"
-	minikube kubectl -- get pods -n temporal
+stopall: ## Stop all services
+	@echo "$(YELLOW)🛑 Stopping all services...$(NC)"
+	@$(MAKE) stop-docker 2>/dev/null || true
+	@$(MAKE) stop-local 2>/dev/null || true
+	@$(MAKE) stop-k8s 2>/dev/null || true
+	@echo "$(GREEN)✅ All services stopped$(NC)"
+
+status: ## Check status of all services
+	@echo "$(BLUE)📊 Service Status$(NC)"
+	@echo "Environment: $(ENVIRONMENT)"
 	@echo ""
-	minikube kubectl -- get deployments -n temporal
+	@$(MAKE) check-services
+
+env-info: ## Show environment information
+	@echo "$(BLUE)🔧 Environment Configuration$(NC)"
+	@echo "Environment: $(ENVIRONMENT)"
+	@echo "Temporal Server: localhost:$(TEMPORAL_SERVER_PORT)"
+	@echo "Image Service: localhost:$(IMAGE_SERVICE_PORT)"
+	@echo "Temporal API: localhost:$(TEMPORAL_API_PORT)"
+	@echo "Admin Interface: localhost:$(ADMIN_PORT)"
+	@echo "Temporal UI: localhost:$(TEMPORAL_UI_PORT)"
+	@echo ""
 
 # =============================================================================
-# LEGACY COMMANDS (keeping for compatibility)
+# DOCKER ENVIRONMENT
 # =============================================================================
 
-# Docker Compose commands
-up:
-	docker compose up -d
+start-docker: ## Start Docker environment
+	@echo "$(GREEN)🐳 Starting Docker services...$(NC)"
+	@docker compose --profile $(DOCKER_COMPOSE_PROFILE) down 2>/dev/null || true
+	@docker compose --profile $(DOCKER_COMPOSE_PROFILE) up -d
+	@echo "Waiting for services to be ready..."
+	@sleep 10
+	@echo "$(GREEN)✅ Docker services started!$(NC)"
+	@echo "$(GREEN)🔗 Starting Temporal API server...$(NC)"
+	@./start-temporal-api.sh $(TEMPORAL_API_PORT) $(TEMPORAL_SERVER_PORT) $(IMAGE_SERVICE_PORT) $(VENV_PATH) || true
+	@echo "$(GREEN)✅ All services ready!$(NC)"
 
-down:
-	docker compose down -v
+stop-docker: ## Stop Docker services
+	@echo "$(YELLOW)🐳 Stopping Docker services...$(NC)"
+	@docker compose --profile $(DOCKER_COMPOSE_PROFILE) down
+	@$(MAKE) stop-temporal-api
 
-# Development commands
-dev:
-	. /tmp/whale-scale-venv/bin/activate && python3 -m app.worker
+start-temporal-api-docker: ## Start Temporal API server for Docker environment
+	@echo "$(GREEN)Starting Temporal API server for Docker...$(NC)"
+	@pkill -f "temporal_api_server.py" 2>/dev/null || true
+	@sleep 2
+	@(. $(VENV_PATH)/bin/activate 2>/dev/null || python3 -m venv $(VENV_PATH) && . $(VENV_PATH)/bin/activate && pip install -r requirements.txt >/dev/null 2>&1) && \
+	 . $(VENV_PATH)/bin/activate && \
+	 TEMPORAL_TARGET=localhost:$(TEMPORAL_SERVER_PORT) \
+	 IMAGE_SERVICE_URL=http://localhost:$(IMAGE_SERVICE_PORT) \
+	 python3 temporal_api_server.py &
+	@sleep 3
 
-# Start services
+# =============================================================================
+# LOCAL ENVIRONMENT
+# =============================================================================
 
-start-temporal:
+start-local: ## Start local development environment
+	@echo "$(GREEN)💻 Starting local services...$(NC)"
+	@$(MAKE) setup-venv
+	@$(MAKE) stop-local 2>/dev/null || true
+	@$(MAKE) start-temporal-local &
+	@sleep 5
+	@$(MAKE) start-image-service-local &
+	@sleep 3
+	@$(MAKE) start-temporal-api-local &
+	@sleep 3
+	@$(MAKE) start-worker-local &
+	@sleep 2
+
+stop-local: ## Stop local services
+	@echo "$(YELLOW)💻 Stopping local services...$(NC)"
+	@pkill -f "temporal server" 2>/dev/null || true
+	@pkill -f "image_generation_service.py" 2>/dev/null || true
+	@pkill -f "temporal_api_server.py" 2>/dev/null || true
+	@pkill -f "app.worker" 2>/dev/null || true
+	@pkill -f "http.server" 2>/dev/null || true
+
+start-temporal-local:
 	@echo "Starting Temporal server..."
-	export PATH="$$PATH:/home/jeric/.temporalio/bin" && temporal server start-dev
+	@export PATH="$$PATH:/home/jeric/.temporalio/bin" && temporal server start-dev &
 
-start-image-service:
+start-image-service-local:
 	@echo "Starting image generation service..."
-	. /tmp/whale-scale-venv/bin/activate && python3 image_generation_service.py
+	@. $(VENV_PATH)/bin/activate && \
+	 HOST=localhost PORT=$(IMAGE_SERVICE_PORT) python3 image_generation_service.py &
 
-start-all:
-	@echo "Starting all services..."
-	make start-temporal &
-	sleep 3
-	make start-image-service &
-	sleep 2
-	make dev
+start-temporal-api-local:
+	@echo "Starting Temporal API server..."
+	@. $(VENV_PATH)/bin/activate && \
+	 TEMPORAL_TARGET=localhost:$(TEMPORAL_SERVER_PORT) \
+	 python3 temporal_api_server.py &
 
-# Restart services (useful for troubleshooting)
-restart-services:
-	@echo "Stopping all services..."
-	pkill -f "python3.*worker" || true
-	pkill -f "python3.*image_generation_service" || true
-	pkill -f "temporal server" || true
-	sleep 3
-	@echo "Starting all services..."
-	make start-all
-
-# Cancel all running workflows
-cancel-workflows:
-	@echo "Canceling all running workflows..."
-	export PATH="$$PATH:/home/jeric/.temporalio/bin" && temporal workflow list | grep Running | awk '{print $$2}' | xargs -I{} temporal workflow cancel --workflow-id {}
-	@echo "All running workflows canceled"
-
-# Docker build commands
-build:
-	docker build . -f Dockerfile.worker -t jeric/whale-scale:latest
-
-build-image-service:
-	docker build . -f Dockerfile.image-service -t jeric/whale-scale-image-service:latest
-
-# Fixed Kubernetes commands (using minikube kubectl)
-kubectl-apply:
-	minikube kubectl -- apply -f k8s/namespace.yaml
-	minikube kubectl -- apply -f k8s/configmap-env.yaml
-	minikube kubectl -- apply -f k8s/services-account.yaml
-	minikube kubectl -- apply -f k8s/deployment-worker.yaml
-
-submit-k8s:
-	minikube kubectl -- apply -f k8s/job-starter.yaml
-
-logs-k8s:
-	minikube kubectl -- logs -f deployment/temporal-worker -n temporal
-
-# Helper commands
-start-workflow:
-	. /tmp/whale-scale-venv/bin/activate && python3 -m app.starter --type hello --name "Jesse"
-
-start-health-check:
-	. /tmp/whale-scale-venv/bin/activate && python3 -m app.starter --type health_check --containers whale-scale-worker-1
-
-start-text2image:
-	. /tmp/whale-scale-venv/bin/activate && python3 -m app.starter --type text2image --prompt "A majestic whale swimming in the deep ocean"
-
-# GPU-optimized workflow commands
-start-text2image-sdxl:
-	@echo "Starting SDXL workflow for maximum GPU utilization (99%+)..."
-	. /tmp/whale-scale-venv/bin/activate && python3 -m app.starter --type text2image --prompt "A majestic whale swimming in the deep ocean, highly detailed, 8k resolution" --model "stabilityai/stable-diffusion-xl-base-1.0" --width 1024 --height 1024 --steps 50 --cfg-scale 15.0
-
-start-text2image-high-util:
-	@echo "Starting high-utilization workflow with SD 1.5..."
-	. /tmp/whale-scale-venv/bin/activate && python3 -m app.starter --type text2image --prompt "A majestic whale swimming in the deep ocean, highly detailed, 8k resolution" --model "runwayml/stable-diffusion-v1-5" --width 1024 --height 1024 --steps 50 --cfg-scale 15.0
-
-# GPU monitoring and testing
-gpu-monitor:
-	@echo "Monitoring GPU usage in real-time..."
-	watch -n 1 nvidia-smi
-
-gpu-test:
-	@echo "Testing GPU with simple operations..."
-	. /tmp/whale-scale-venv/bin/activate && python3 -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}'); print(f'GPU count: {torch.cuda.device_count()}'); print(f'Current device: {torch.cuda.current_device()}'); print(f'Device name: {torch.cuda.get_device_name()}'); a = torch.randn(1000, 1000).cuda(); b = torch.randn(1000, 1000).cuda(); c = torch.mm(a, b); print('GPU test completed successfully!')"
-
-list-models:
-	@echo "Listing available models..."
-	curl -X GET http://localhost:8001/models/checkpoints
-
-test-sdxl:
-	@echo "Testing SDXL generation directly..."
-	curl -X POST http://localhost:8001/generate -H "Content-Type: application/json" -d '{"prompt": "A majestic whale swimming in the deep ocean, highly detailed, 8k resolution", "model": "stabilityai/stable-diffusion-xl-base-1.0", "width": 1024, "height": 1024, "steps": 30, "cfg_scale": 15.0, "seed": 42}'
-
-test-multi-gen:
-	@echo "Testing multiple simultaneous generations..."
-	curl -X POST http://localhost:8001/generate -H "Content-Type: application/json" -d '{"prompt": "A majestic whale swimming in the deep ocean, highly detailed, 8k resolution", "model": "runwayml/stable-diffusion-v1-5", "width": 1024, "height": 1024, "steps": 50, "cfg_scale": 15.0, "seed": 42}' &
-	curl -X POST http://localhost:8001/generate -H "Content-Type: application/json" -d '{"prompt": "A beautiful landscape with mountains and lakes, highly detailed, 8k resolution", "model": "runwayml/stable-diffusion-v1-5", "width": 1024, "height": 1024, "steps": 50, "cfg_scale": 15.0, "seed": 43}' &
-	curl -X POST http://localhost:8001/generate -H "Content-Type: application/json" -d '{"prompt": "A futuristic city with flying cars and neon lights, highly detailed, 8k resolution", "model": "runwayml/stable-diffusion-v1-5", "width": 1024, "height": 1024, "steps": 50, "cfg_scale": 15.0, "seed": 44}' &
-
-# Temporal monitoring commands
-temporal-ui:
-	@echo "Opening Temporal Web UI..."
-	@echo "URL: http://localhost:8233"
-	@echo "If the UI doesn't open automatically, copy and paste the URL into your browser"
-
-temporal-list:
-	@echo "Listing all workflows..."
-	export PATH="$$PATH:/home/jeric/.temporalio/bin" && temporal workflow list
-
-temporal-describe:
-	@echo "Usage: make temporal-describe WORKFLOW_ID=your-workflow-id"
-	@echo "Example: make temporal-describe WORKFLOW_ID=text2image-9667"
-	export PATH="$$PATH:/home/jeric/.temporalio/bin" && temporal workflow describe --workflow-id $(WORKFLOW_ID)
-
-temporal-task-queue:
-	@echo "Viewing task queue statistics..."
-	export PATH="$$PATH:/home/jeric/.temporalio/bin" && temporal task-queue describe --task-queue hello-python-tq
-
-temporal-show:
-	@echo "Usage: make temporal-show WORKFLOW_ID=your-workflow-id"
-	@echo "Example: make temporal-show WORKFLOW_ID=text2image-9667"
-	export PATH="$$PATH:/home/jeric/.temporalio/bin" && temporal workflow show --workflow-id $(WORKFLOW_ID)
-
-temporal-query:
-	@echo "Usage: make temporal-query WORKFLOW_ID=your-workflow-id"
-	@echo "Example: make temporal-query WORKFLOW_ID=text2image-9667"
-	export PATH="$$PATH:/home/jeric/.temporalio/bin" && temporal workflow query --workflow-id $(WORKFLOW_ID) --query get_status
-
-# Service status and troubleshooting
-status:
-	@echo "Checking service status..."
-	@echo "=== Temporal Server ==="
-	curl -s http://localhost:7233/health || echo "Temporal server not responding"
-	@echo ""
-	@echo "=== Image Generation Service ==="
-	curl -s http://localhost:8001/ || echo "Image service not responding"
-	@echo ""
-	@echo "=== Running Processes ==="
-	ps aux | grep -E "(image_generation_service|app.worker|temporal)" | grep -v grep || echo "No services running"
-	@echo ""
-	@echo "=== GPU Status ==="
-	nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits || echo "GPU not available"
-
-check-services:
-	@echo "Checking if all services are running..."
-	@echo "Temporal server: $$(curl -s http://localhost:7233/health > /dev/null && echo "✅ Running" || echo "❌ Not running")"
-	@echo "Image service: $$(curl -s http://localhost:8001/ > /dev/null && echo "✅ Running" || echo "❌ Not running")"
-	@echo "Worker: $$(ps aux | grep "app.worker" | grep -v grep > /dev/null && echo "✅ Running" || echo "❌ Not running")"
-
-# Cleanup commands
-clean:
-	@echo "Cleaning up..."
-	rm -rf generated_images/*
-	@echo "Generated images cleaned"
-
-clean-all:
-	@echo "Cleaning up everything..."
-	pkill -f "python3.*worker" || true
-	pkill -f "python3.*image_generation_service" || true
-	pkill -f "temporal server" || true
-	rm -rf generated_images/*
-	@echo "All services stopped and images cleaned"
-
-# Test commands
-test:
-	. /tmp/whale-scale-venv/bin/activate && python3 -m pytest app/tests/ -v
-
-# Admin interface
-admin:
-	@echo "Starting admin interface..."
-	@echo "Open http://localhost:8080 in your browser"
-	python3 -m http.server 8080
-
-# Setup commands for NVIDIA Docker and Kubernetes (FIXED)
-setup-nvidia-docker:
-	@echo "Setting up NVIDIA Docker..."
-	distribution=$$(. /etc/os-release;echo $$ID$$VERSION_ID) && curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add - && curl -s -L https://nvidia.github.io/nvidia-docker/$$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
-	sudo apt-get update && sudo apt-get install -y nvidia-docker2
-	sudo systemctl restart docker
-
-setup-nvidia-k8s:
-	@echo "Setting up NVIDIA Kubernetes device plugin..."
-	minikube kubectl -- create -f https://raw.githubusercontent.com/NVIDIA/k8s-device-plugin/v0.14.1/nvidia-device-plugin.yml
+start-worker-local:
+	@echo "Starting Temporal worker..."
+	@. $(VENV_PATH)/bin/activate && \
+	 TEMPORAL_TARGET=localhost:$(TEMPORAL_SERVER_PORT) \
+	 TASK_QUEUE=$(TEMPORAL_TASK_QUEUE) \
+	 IMAGE_GENERATION_SERVICE_URL=http://localhost:$(IMAGE_SERVICE_PORT) \
+	 python3 -m app.worker &
 
 # =============================================================================
-# HELP COMMANDS
+# KUBERNETES ENVIRONMENT
 # =============================================================================
 
-help:
-	@echo "🐋 Whale Scale - Available Commands"
-	@echo "===================================="
-	@echo ""
-	@echo "🚀 QUICK DEPLOYMENT:"
-	@echo "  deploy-docker     - Deploy to Docker (recommended for dev)"
-	@echo "  deploy-k8s        - Deploy to Kubernetes"
-	@echo "  redeploy-docker   - Rebuild and redeploy to Docker"
-	@echo "  redeploy-k8s      - Rebuild and redeploy to Kubernetes"
-	@echo ""
-	@echo "🎨 IMAGE GENERATION:"
-	@echo "  gen-image         - Generate image with custom prompt"
-	@echo "  gen-image-hq      - Generate high-quality image"
-	@echo "  gen-whale         - Generate a whale image (for testing)"
-	@echo ""
-	@echo "📊 STATUS & MONITORING:"
-	@echo "  status-docker     - Check Docker deployment status"
-	@echo "  status-k8s        - Check Kubernetes deployment status"
-	@echo "  gpu-monitor       - Monitor GPU usage"
-	@echo ""
-	@echo "🔧 LEGACY COMMANDS:"
-	@echo "  up/down           - Docker compose up/down"
-	@echo "  build             - Build Docker images"
-	@echo "  dev               - Run worker locally"
-	@echo ""
-	@echo "For more commands, see the Makefile"
+start-k8s: ## Start Kubernetes environment
+	@echo "$(GREEN)☸️ Starting Kubernetes services...$(NC)"
+	@echo "$(RED)❌ Kubernetes support coming soon!$(NC)"
+	@exit 1
 
-.PHONY: install fix-dependencies fix-sandbox up down dev build build-image-service kubectl-apply submit-k8s logs-k8s test clean clean-all setup-nvidia-docker setup-nvidia-k8s start-workflow start-health-check start-text2image start-text2image-sdxl start-text2image-high-util gpu-monitor gpu-test list-models test-sdxl test-multi-gen start-temporal start-image-service start-all restart-services status check-services temporal-ui temporal-list temporal-describe temporal-task-queue temporal-show temporal-query cancel-workflows deploy-docker deploy-k8s redeploy-docker redeploy-k8s gen-image gen-image-hq gen-whale status-docker status-k8s help
-.DEFAULT_GOAL := help
+stop-k8s: ## Stop Kubernetes services
+	@echo "$(YELLOW)☸️ Stopping Kubernetes services...$(NC)"
+	@echo "$(RED)❌ Kubernetes support coming soon!$(NC)"
+
+# =============================================================================
+# ADMIN INTERFACE
+# =============================================================================
+
+start-admin: ## Start admin web interface
+	@./start-admin.sh $(ADMIN_PORT)
+
+stop-admin: ## Stop admin interface
+	@./stop-admin.sh $(ADMIN_PORT)
+
+# =============================================================================
+# UTILITIES
+# =============================================================================
+
+setup-venv: ## Set up Python virtual environment
+	@if [ ! -d "$(VENV_PATH)" ]; then \
+		echo "$(GREEN)🐍 Creating Python virtual environment...$(NC)"; \
+		python3 -m venv $(VENV_PATH); \
+		. $(VENV_PATH)/bin/activate && pip install --upgrade pip; \
+		. $(VENV_PATH)/bin/activate && pip install -r requirements.txt; \
+	fi
+
+stop-temporal-api: ## Stop Temporal API server
+	@pkill -f "temporal_api_server.py" 2>/dev/null || true
+
+check-services: ## Check if services are running
+	@echo "$(BLUE)🔍 Checking services...$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Image Service (Primary):$(NC)"
+	@curl -s http://localhost:$(IMAGE_SERVICE_PORT)/ 2>/dev/null >/dev/null && echo " ✅ Running" || echo " ❌ Not responding"
+	@echo ""
+	@echo "$(YELLOW)Admin Interface:$(NC)"
+	@curl -s http://localhost:$(ADMIN_PORT)/ 2>/dev/null >/dev/null && echo " ✅ Running" || echo " ❌ Not responding"
+	@echo ""
+	@echo "$(YELLOW)Docker Containers:$(NC)"
+	@docker ps --format "table {{.Names}}\t{{.Status}}" 2>/dev/null | grep whale-scale || echo " ❌ No containers running"
+	@echo ""
+	@echo "$(YELLOW)Optional Services:$(NC)"
+	@echo -n "  Temporal Server: " && (curl -s http://localhost:$(TEMPORAL_SERVER_PORT)/health 2>/dev/null >/dev/null && echo "✅" || echo "❌ (not needed for basic usage)")
+	@echo -n "  Temporal API: " && (curl -s http://localhost:$(TEMPORAL_API_PORT)/health 2>/dev/null >/dev/null && echo "✅" || echo "❌ (not needed for basic usage)")
+
+show-urls: ## Show service URLs
+	@echo ""
+	@echo "$(GREEN)🌐 Service URLs:$(NC)"
+	@echo "  Admin Interface: http://localhost:$(ADMIN_PORT)/admin.html"
+	@echo "  Temporal UI: http://localhost:$(TEMPORAL_UI_PORT)"
+	@echo "  Image Service: http://localhost:$(IMAGE_SERVICE_PORT)"
+	@echo "  Temporal API: http://localhost:$(TEMPORAL_API_PORT)"
+	@echo ""
+	@echo "$(BLUE)💡 Tip: Run 'make status' to check if services are healthy$(NC)"
+
+clean: ## Clean up generated files and containers
+	@echo "$(YELLOW)🧹 Cleaning up...$(NC)"
+	@$(MAKE) stopall
+	@docker system prune -f 2>/dev/null || true
+	@rm -rf $(OUTPUT_DIR)/*.png 2>/dev/null || true
+	@echo "$(GREEN)✅ Cleanup complete$(NC)"
+
+test: ## Run tests
+	@echo "$(BLUE)🧪 Running tests...$(NC)"
+	@. $(VENV_PATH)/bin/activate && python3 -m pytest app/tests/ -v
+
+# =============================================================================
+# DEVELOPMENT SHORTCUTS
+# =============================================================================
+
+dev: ## Start everything for development (Docker + Admin)
+	@echo "$(GREEN)🚀 Starting development environment...$(NC)"
+	@$(MAKE) startall
+	@sleep 3
+	@./start-admin.sh $(ADMIN_PORT)
+	@echo "$(GREEN)✅ Development environment ready!$(NC)"
+	@echo ""
+	@echo "$(GREEN)🌐 Service URLs:$(NC)"
+	@echo "  Admin Interface: http://localhost:$(ADMIN_PORT)/admin.html"
+	@echo "  Image Service: http://localhost:$(IMAGE_SERVICE_PORT)"
+	@echo "  Temporal UI: http://localhost:$(TEMPORAL_UI_PORT)"
+	@echo ""
+	@echo "$(BLUE)💡 Generate images at: http://localhost:$(ADMIN_PORT)/admin.html$(NC)"
+
+logs-docker: ## Show Docker container logs
+	@docker compose logs -f
+
+restart: stopall startall ## Restart all services
+
+quick-test: ## Quick test of image generation
+	@echo "$(BLUE)🧪 Testing image generation...$(NC)"
+	@echo "Testing direct image service..."
+	@curl -X POST http://localhost:$(IMAGE_SERVICE_PORT)/generate \
+		-H "Content-Type: application/json" \
+		-d '{"prompt": "test image", "model": "runwayml/stable-diffusion-v1-5"}' \
+		2>/dev/null && echo "" && echo "$(GREEN)✅ Image generation test successful!$(NC)" || echo "$(RED)❌ Image generation test failed$(NC)"

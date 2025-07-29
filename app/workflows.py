@@ -110,6 +110,12 @@ class HealthCheckWorkflow:
 
 @workflow.defn
 class Text2ImageWorkflow:
+    def __init__(self):
+        self._prompt = ""
+        self._image_url = None
+        self._status = "pending"
+        self._progress = 0
+
     @workflow.run
     async def run(self, args: tuple) -> dict:
         """

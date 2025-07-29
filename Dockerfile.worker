@@ -1,6 +1,7 @@
-FROM python:3.10-slim
+# Multi-stage build for better caching
+FROM python:3.10-slim AS base
 
-# Set up Python and install dependencies
+# Set up Python and install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && apt-get clean \
@@ -11,12 +12,16 @@ RUN pip install --upgrade pip setuptools wheel
 
 WORKDIR /app
 
-# Copy requirements first for better caching
+# Dependencies stage - this layer will be cached unless requirements change
+FROM base AS dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# Final stage
+FROM dependencies AS final
+
+# Copy application code (this layer changes frequently)
+COPY app/ ./app/
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1

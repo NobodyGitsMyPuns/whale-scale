@@ -286,6 +286,59 @@
             box-shadow: 0 5px 10px rgba(39, 174, 96, 0.3);
         }
 
+        /* Progress bar styles */
+        .progress-container {
+            position: relative;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+            height: 20px;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            border-radius: 10px;
+            transition: width 0.3s ease;
+            position: relative;
+            width: 0%;
+        }
+
+        .progress-bar.completed {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        }
+
+        .progress-bar.failed {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #2c3e50;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 0 1px 2px rgba(255,255,255,0.7);
+        }
+
+        .image-card.generating {
+            border: 2px solid #3498db;
+            box-shadow: 0 0 20px rgba(52, 152, 219, 0.3);
+        }
+
+        .image-card.generating .image-placeholder {
+            height: 300px;
+            background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #7f8c8d;
+            font-size: 18px;
+        }
+
         .loading {
             display: none;
             text-align: center;
@@ -420,13 +473,12 @@
                     
                     <div class="form-group">
                         <label for="prompt">Prompt</label>
-                        <textarea id="prompt" placeholder="Enter your image generation prompt...">A majestic whale swimming in the deep ocean, highly detailed, 8k resolution</textarea>
+                        <textarea id="prompt" placeholder="Enter your image generation prompt..."></textarea>
                     </div>
 
                     <div class="form-group">
                         <label for="negativePrompt">Negative Prompt</label>
-                        <textarea id="negativePrompt" placeholder="Enter negative prompt (what to avoid)...">blurry, low resolution, jpeg artifacts, out of focus, overexposed, underexposed, bad lighting, unnatural skin, mutated hands, extra fingers, missing fingers, fused fingers, long neck, deformed face, bad anatomy, disfigured, unrealistic proportions, extra limbs, cross-eyed, lazy eye, distorted eyes, poorly drawn face, asymmetrical face, extra arms, extra legs, broken limbs, ugly, old, cartoon, anime, painting, 3d render, nsfw, watermark, text, signature
-                        </textarea>
+                        <textarea id="negativePrompt" placeholder="extra people, extra hands, extra legs, extra feet, extra arms, extra fingers, extra toes, extra eyes, extra ears, extra nose, extra mouth, extra hair, extra clothing, extra accessories, extra background, extra objects, extra details, extra everything, ugly, deformed, bad anatomy, bad hands, bad feet, bad fingers, bad toes, bad eyes, bad ears, bad nose, bad mouth, bad hair, bad clothing, bad accessories, bad background, bad objects, bad details, bad everything"></textarea>
                     </div>
 
                     <div class="form-group">
@@ -439,7 +491,7 @@
                     <div class="form-group">
                         <label for="width">Width</label>
                         <div class="range-group">
-                            <input type="range" id="width" min="256" max="2048" step="64" value="1024">
+                            <input type="range" id="width" min="256" max="2048" step="64" value="512">
                             <span class="value" id="widthValue">512</span>
                         </div>
                     </div>
@@ -447,7 +499,7 @@
                     <div class="form-group">
                         <label for="height">Height</label>
                         <div class="range-group">
-                            <input type="range" id="height" min="256" max="2048" step="64" value="1024">
+                            <input type="range" id="height" min="256" max="2048" step="64" value="512">
                             <span class="value" id="heightValue">512</span>
                         </div>
                     </div>
@@ -550,6 +602,7 @@
             <div class="form-section">
                 <h3>📋 API Logs</h3>
                 <div id="jsonLogs">
+                    <button class="btn btn-danger" onclick="clearLogs()">Clear Logs</button>    
                     <!-- JSON requests/responses will appear here -->
                 </div>
             </div>
@@ -562,11 +615,57 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:8001';
+        // Smart Environment Detection
+        async function detectEnvironment() {
+            // Try temporal API first (for Temporal workflows)
+            try {
+                const response = await fetch('http://localhost:8002/health');
+                if (response.ok) {
+                    return {
+                        api_base: 'http://localhost:8002',
+                        environment: 'local-temporal',
+                        description: 'Using Temporal API Server (queued workflows)'
+                    };
+                }
+            } catch (e) {}
+            
+            // Fall back to direct image service (Docker environment)
+            try {
+                const response = await fetch('http://localhost:8000/');
+                if (response.ok) {
+                    return {
+                        api_base: 'http://localhost:8000',
+                        environment: 'docker',
+                        description: 'Using Image Service directly (no queue)'
+                    };
+                }
+            } catch (e) {}
+            
+            // Default fallback
+            return {
+                api_base: 'http://localhost:8000',
+                environment: 'unknown',
+                description: 'Default configuration'
+            };
+        }
+        
+        let API_BASE = 'http://localhost:8002'; // Force Temporal API
+        let ENV_CONFIG = {
+            api_base: 'http://localhost:8002',
+            environment: 'local-temporal',
+            description: 'Using Temporal API Server (queued workflows)'
+        };
         let currentTaskId = null;
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Detect environment first
+            ENV_CONFIG = await detectEnvironment();
+            API_BASE = ENV_CONFIG.api_base;
+            
+            // Show environment info
+            showAlert(`🔧 Environment: ${ENV_CONFIG.description}`, 'info');
+            
             checkStatus();
             loadModels();
             setupRangeInputs();
@@ -578,6 +677,12 @@
             ranges.forEach(id => {
                 const input = document.getElementById(id);
                 const value = document.getElementById(id + 'Value');
+                
+                // Initialize display value to match input value
+                if (input && value) {
+                    value.textContent = input.value;
+                }
+                
                 input.addEventListener('input', () => {
                     value.textContent = input.value;
                 });
@@ -618,9 +723,25 @@
                 const select = document.getElementById('model');
                 select.innerHTML = '<option value="">Select a model...</option>';
                 
-                // Group models by type
-                const checkpoints = data.models.filter(m => m.type === 'checkpoint');
-                const loras = data.models.filter(m => m.type === 'lora');
+                let checkpoints = [];
+                let loras = [];
+                
+                // Handle different API response formats
+                if (data.models && Array.isArray(data.models)) {
+                    // Format from image_generation_service.py
+                    checkpoints = data.models.filter(m => m.type === 'checkpoint');
+                    loras = data.models.filter(m => m.type === 'lora');
+                } else if (data.available_models) {
+                    // Format from temporal_api_server.py
+                    if (data.available_models.checkpoints) {
+                        checkpoints = data.available_models.checkpoints.map(name => ({ name, type: 'checkpoint' }));
+                    }
+                    if (data.available_models.loras) {
+                        loras = data.available_models.loras.map(name => ({ name, type: 'lora' }));
+                    }
+                } else {
+                    throw new Error('Invalid response: no models found in response');
+                }
                 
                 // Add checkpoint models first
                 if (checkpoints.length > 0) {
@@ -656,7 +777,7 @@
                 if (checkpoints.length > 0) {
                     // Look for SD1.5 model first
                     const sd15Model = checkpoints.find(model => 
-                        model.name.includes('SD1.5') && model.name.includes('v1-5-pruned-emaonly.ckpt')
+                        model.name.includes('stable-diffusion-v1-5') || model.name.includes('SD1.5')
                     );
                     if (sd15Model) {
                         select.value = sd15Model.name;
@@ -665,9 +786,14 @@
                         select.value = checkpoints[0].name;
                     }
                 }
+                
+                // Show success message
+                const totalModels = checkpoints.length + loras.length;
+                showAlert(`Loaded ${totalModels} models (${checkpoints.length} checkpoints, ${loras.length} LoRAs)`, 'success');
+                
             } catch (error) {
                 logJson('Models Error', { error: error.message }, 'error', 'Network Error');
-                showAlert('Failed to load models', 'error');
+                showAlert('Failed to load models: ' + error.message, 'error');
             }
         }
 
@@ -677,7 +803,9 @@
             
             try {
                 showLoading(true);
-                showAlert('Starting image generation...', 'info');
+                showAlert(`🚀 Calling ${API_BASE}/generate`, 'info');
+                console.log('API_BASE:', API_BASE);
+                console.log('Params:', params);
                 
                 logJson('Generate Request', params, 'request');
                 
@@ -689,10 +817,24 @@
                     body: JSON.stringify(params)
                 });
                 
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
+                console.log('Response data:', data);
                 logJson('Generate Response', data, 'response');
                 
+                if (data.workflow_id) {
+                    showAlert(`✅ Temporal workflow created: ${data.workflow_id}`, 'success');
+                } else {
+                    showAlert(`⚠️ Direct generation started: ${data.task_id}`, 'info');
+                }
+                
                 currentTaskId = data.task_id;
+                
+                // Create placeholder card with progress bar
+                createGeneratingCard(data.task_id, params);
                 
                 // Poll for completion
                 pollTaskStatus(data.task_id);
@@ -729,6 +871,10 @@
                     });
                     
                     const data = await response.json();
+                    
+                    // Create placeholder card with progress bar
+                    createGeneratingCard(data.task_id, params);
+                    
                     pollTaskStatus(data.task_id);
                     
                     // Small delay between requests
@@ -741,6 +887,9 @@
 
         // Poll task status
         async function pollTaskStatus(taskId) {
+            // Initial progress update
+            updateProgress(taskId, 'starting');
+            
             const pollInterval = setInterval(async () => {
                 try {
                     const response = await fetch(`${API_BASE}/status/${taskId}`);
@@ -748,20 +897,29 @@
                     
                     logJson(`Status ${taskId}`, data, 'response');
                     
+                    // Update progress bar based on status
+                    const progress = data.progress || 0;
+                    updateProgress(taskId, data.status, progress);
+                    
                     if (data.status === 'completed') {
                         clearInterval(pollInterval);
                         showLoading(false);
+                        updateProgress(taskId, 'completed', 100);
                         await getTaskResult(taskId);
                     } else if (data.status === 'failed') {
                         clearInterval(pollInterval);
                         showLoading(false);
+                        updateProgress(taskId, 'failed');
                         logJson(`Task Failed ${taskId}`, data, 'error');
-                        showAlert('Generation failed: ' + data.error, 'error');
+                        showAlert('Generation failed: ' + (data.error || 'Unknown error'), 'error');
+                    } else if (data.status === 'processing') {
+                        updateProgress(taskId, 'processing', progress);
                     }
                     // Continue polling if still processing
                 } catch (error) {
                     clearInterval(pollInterval);
                     showLoading(false);
+                    updateProgress(taskId, 'failed');
                     logJson(`Status Error ${taskId}`, { error: error.message }, 'error');
                     showAlert('Failed to check task status: ' + error.message, 'error');
                 }
@@ -774,22 +932,125 @@
                 const response = await fetch(`${API_BASE}/result/${taskId}`);
                 const data = await response.json();
                 
-                addImageToGallery(data);
+                // Replace the placeholder card with the final image
+                addImageToGallery(data, taskId);
                 showAlert('Image generated successfully!', 'success');
                 
             } catch (error) {
+                updateProgress(taskId, 'failed');
                 showAlert('Failed to get result: ' + error.message, 'error');
             }
         }
 
-        // Add image to gallery
-        function addImageToGallery(data) {
+        // Create placeholder card with progress bar
+        function createGeneratingCard(taskId, params) {
             const gallery = document.getElementById('gallery');
             const card = document.createElement('div');
-            card.className = 'image-card';
+            card.className = 'image-card generating';
+            card.id = taskId;
             
             const timestamp = new Date().toLocaleString();
-            const imageId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            card.innerHTML = `
+                <div class="image-placeholder">
+                    🎨 Generating...
+                </div>
+                <div class="image-info">
+                    <h4>Generating Image</h4>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="progress-${taskId}">
+                            <div class="progress-text">Starting...</div>
+                        </div>
+                    </div>
+                    <p><strong>Prompt:</strong> ${params.prompt}</p>
+                    <p><strong>Model:</strong> ${params.model}</p>
+                    <p><strong>Seed:</strong> ${params.seed}</p>
+                    <p><strong>Started:</strong> ${timestamp}</p>
+                    <div class="image-actions">
+                        <button class="btn btn-delete btn-small" onclick="cancelGeneration('${taskId}')">
+                            ❌ Cancel
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            gallery.insertBefore(card, gallery.firstChild);
+            return card;
+        }
+
+        // Update progress bar
+        function updateProgress(taskId, status, progress = 0) {
+            const progressBar = document.getElementById(`progress-${taskId}`);
+            const progressText = progressBar?.querySelector('.progress-text');
+            const card = document.getElementById(taskId);
+            
+            if (!progressBar || !progressText || !card) return;
+            
+            switch (status) {
+                case 'starting':
+                    progressBar.style.width = '10%';
+                    progressText.textContent = 'Starting...';
+                    break;
+                case 'processing':
+                    progressBar.style.width = `${Math.max(20, progress)}%`;
+                    progressText.textContent = `Processing... ${progress}%`;
+                    break;
+                case 'completed':
+                    progressBar.style.width = '100%';
+                    progressBar.classList.add('completed');
+                    progressText.textContent = 'Completed!';
+                    break;
+                case 'failed':
+                    progressBar.style.width = '100%';
+                    progressBar.classList.add('failed');
+                    progressText.textContent = 'Failed';
+                    card.classList.remove('generating');
+                    break;
+            }
+        }
+
+        // Cancel generation
+        function cancelGeneration(taskId) {
+            if (confirm('Are you sure you want to cancel this generation?')) {
+                const card = document.getElementById(taskId);
+                if (card) {
+                    card.style.animation = 'fadeOut 0.3s ease';
+                    setTimeout(() => {
+                        card.remove();
+                        showAlert('Generation cancelled', 'info');
+                    }, 300);
+                }
+            }
+        }
+
+        // Add completed image to gallery (replaces placeholder)
+        function addImageToGallery(data, taskId = null) {
+            const gallery = document.getElementById('gallery');
+            let card;
+            
+            if (taskId) {
+                // Update existing card
+                card = document.getElementById(taskId);
+                if (card) {
+                    card.classList.remove('generating');
+                } else {
+                    // Create new card if not found
+                    card = document.createElement('div');
+                    card.className = 'image-card';
+                    card.id = taskId;
+                    gallery.insertBefore(card, gallery.firstChild);
+                }
+            } else {
+                // Create new card
+                card = document.createElement('div');
+                card.className = 'image-card';
+                const imageId = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                card.id = imageId;
+                gallery.insertBefore(card, gallery.firstChild);
+            }
+            
+            const timestamp = new Date().toLocaleString();
+            const imageId = card.id;
             
             card.innerHTML = `
                 <img src="data:image/png;base64,${data.image_data}" alt="Generated image">
@@ -809,9 +1070,6 @@
                     </div>
                 </div>
             `;
-            
-            card.id = imageId;
-            gallery.insertBefore(card, gallery.firstChild);
         }
 
         // Delete image from gallery
@@ -887,6 +1145,11 @@
         function clearGallery() {
             document.getElementById('gallery').innerHTML = '';
             showAlert('Gallery cleared', 'success');
+        }
+            //Clear logs    
+            function clearLogs() {
+            document.getElementById('jsonLogs').innerHTML = '';
+            showAlert('Logs cleared', 'success');
         }
 
         // Show/hide loading

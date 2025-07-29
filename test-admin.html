@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Environment Detection Test</title>
+</head>
+<body>
+    <h1>Environment Detection Test</h1>
+    <div id="result">Testing...</div>
+    
+    <script>
+        async function testEnvironment() {
+            const result = document.getElementById('result');
+            
+            // Test Temporal API
+            try {
+                console.log('Testing Temporal API...');
+                const response = await fetch('http://localhost:8002/health');
+                console.log('Temporal API response:', response);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    result.innerHTML = `✅ Temporal API detected: ${JSON.stringify(data)}<br>Should use: http://localhost:8002`;
+                    return;
+                }
+            } catch (e) {
+                console.log('Temporal API error:', e);
+            }
+            
+            // Test Image Service
+            try {
+                console.log('Testing Image Service...');
+                const response = await fetch('http://localhost:8000/');
+                console.log('Image Service response:', response);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    result.innerHTML = `⚠️ Falling back to Image Service: ${JSON.stringify(data)}<br>Should use: http://localhost:8000`;
+                    return;
+                }
+            } catch (e) {
+                console.log('Image Service error:', e);
+            }
+            
+            result.innerHTML = '❌ No services detected';
+        }
+        
+        testEnvironment();
+    </script>
+</body>
+</html> 
