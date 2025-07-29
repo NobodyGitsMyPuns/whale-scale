@@ -15,7 +15,7 @@ async def main():
     parser.add_argument("--prompt", type=str, 
                        default="A majestic whale swimming in the deep ocean, high quality, detailed", 
                        help="Text prompt for image generation")
-    parser.add_argument("--negative-prompt", type=str, default="blurry, distorted, low quality, low resolution, poorly drawn, bad anatomy, disfigured, deformed, extra limbs, mutated, watermark, text, signature, nsfw, grainy, noisy, overexposed, underexposed, ugly", 
+    parser.add_argument("--negative-prompt", type=str, default="blurry, distorted, low quality, low resolution, poorly drawn, bad anatomy, disfigured, deformed, extra limbs, mutated, watermark, text, signature, grainy, noisy, overexposed, underexposed, ugly", 
                        help="Negative prompt for image generation")
     parser.add_argument("--model", type=str, default="runwayml/stable-diffusion-v1-5", 
                        help="Model for image generation (e.g., 'runwayml/stable-diffusion-v1-5', 'FLUX1/flux1-schnell-fp8.safetensors')")

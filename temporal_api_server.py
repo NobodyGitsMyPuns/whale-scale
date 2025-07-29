@@ -7,6 +7,8 @@ This server acts as a bridge between the admin interface and Temporal workflows
 import asyncio
 import json
 import uuid
+import os
+import aiohttp
 from datetime import datetime
 from typing import Dict, Any
 import uvicorn
@@ -33,9 +35,12 @@ app.add_middleware(
 # Store workflow status
 workflow_status: Dict[str, Dict[str, Any]] = {}
 
+# Image service URL
+IMAGE_SERVICE_URL = os.getenv("IMAGE_SERVICE_URL", "http://localhost:8000")
+
 class ImageGenerationRequest(BaseModel):
     prompt: str
-    negative_prompt: str = "blurry, distorted, low quality, low resolution, poorly drawn, bad anatomy, disfigured, deformed, extra limbs, mutated, watermark, text, signature, nsfw, grainy, noisy, overexposed, underexposed, ugly"
+    negative_prompt: str = "blurry, distorted, low quality, low resolution, poorly drawn, bad anatomy, disfigured, deformed, extra limbs, mutated, watermark, text, signature, grainy, noisy, overexposed, underexposed, ugly"
     model: str = "runwayml/stable-diffusion-v1-5"
     width: int = 512
     height: int = 512
@@ -43,18 +48,47 @@ class ImageGenerationRequest(BaseModel):
     cfg_scale: float = 7.5
     seed: int = -1
 
+async def get_image_service_status():
+    """Get status from the image generation service"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{IMAGE_SERVICE_URL}/") as response:
+                if response.status == 200:
+                    return await response.json()
+    except Exception as e:
+        print(f"Failed to get image service status: {e}")
+    return None
+
 @app.get("/")
 async def root():
-    return {
-        "service": "Temporal API Server",
-        "status": "running",
-        "description": "HTTP API for triggering Temporal workflows",
-        "endpoints": {
-            "POST /generate": "Start image generation workflow",
-            "GET /status/{workflow_id}": "Get workflow status",
-            "GET /workflows": "List all workflows"
+    """Root endpoint that provides status information compatible with admin interface"""
+    # Get status from image service
+    image_service_status = await get_image_service_status()
+    
+    if image_service_status:
+        # Return the same format as image service but indicate it's via Temporal
+        return {
+            "service": "Temporal API Server",
+            "status": "running",
+            "gpu_available": image_service_status.get("gpu_available", False),
+            "models_loaded": image_service_status.get("models_loaded", []),
+            "total_models_found": image_service_status.get("total_models_found", 0),
+            "comfyui_models_dir": image_service_status.get("comfyui_models_dir", ""),
+            "description": "HTTP API for triggering Temporal workflows",
+            "image_service_status": "connected"
         }
-    }
+    else:
+        # Fallback if image service is not available
+        return {
+            "service": "Temporal API Server", 
+            "status": "running",
+            "gpu_available": False,
+            "models_loaded": [],
+            "total_models_found": 0,
+            "comfyui_models_dir": "",
+            "description": "HTTP API for triggering Temporal workflows",
+            "image_service_status": "disconnected"
+        }
 
 @app.post("/generate")
 async def generate_image(request: ImageGenerationRequest):
@@ -157,23 +191,31 @@ async def list_workflows():
         "total": len(workflow_status)
     }
 
+@app.get("/models")
+async def list_models():
+    """Proxy models endpoint from image service"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{IMAGE_SERVICE_URL}/models") as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    raise HTTPException(status_code=response.status, detail="Image service error")
+    except aiohttp.ClientError as e:
+        raise HTTPException(status_code=503, detail=f"Cannot connect to image service: {str(e)}")
+
 @app.get("/models/text2image")
-async def get_text2image_models():
-    """Get available text2image models"""
-    return {
-        "available_models": {
-            "checkpoints": [
-                "runwayml/stable-diffusion-v1-5",
-                "stabilityai/stable-diffusion-xl-base-1.0",
-                "stabilityai/stable-diffusion-2-1"
-            ],
-            "loras": [],
-            "controlnet": [],
-            "vae": [],
-            "embeddings": [],
-            "upscale_models": []
-        }
-    }
+async def list_text2image_models():
+    """Proxy text2image models endpoint from image service"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{IMAGE_SERVICE_URL}/models/text2image") as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    raise HTTPException(status_code=response.status, detail="Image service error")
+    except aiohttp.ClientError as e:
+        raise HTTPException(status_code=503, detail=f"Cannot connect to image service: {str(e)}")
 
 @app.get("/health")
 async def health_check():
